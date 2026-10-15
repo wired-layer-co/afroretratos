@@ -32,7 +32,7 @@ export default async function EditEventPage({ params }: Props) {
   const databaseReady = hasDatabase();
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-[64rem]">
       <Link
         href="/admin/eventos"
         className="text-xs font-medium tracking-[0.12em] text-brown-raised uppercase underline decoration-brown-deep/30 hover:decoration-brown-deep"
@@ -67,7 +67,7 @@ export default async function EditEventPage({ params }: Props) {
       </div>
 
       {/* Duas abas: os dados do evento e as imagens. */}
-      <div className="mt-8 max-w-[64rem]">
+      <div className="mt-8">
         <EventTabs
           imageCount={gallery.length + (cover ? 1 : 0)}
           data={<EventForm event={event} />}

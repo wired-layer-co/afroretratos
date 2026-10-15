@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default function NewEventPage() {
   return (
-    <div>
+    <div className="mx-auto w-full max-w-[64rem]">
       <Link
         href="/admin/eventos"
         className="text-xs font-medium tracking-[0.12em] text-brown-raised uppercase underline decoration-brown-deep/30 hover:decoration-brown-deep"
@@ -16,11 +16,11 @@ export default function NewEventPage() {
         Novo evento
       </h1>
       <p className="mt-3 max-w-[70ch] text-sm leading-relaxed text-brown-raised">
-        O evento entra no site assim que for salvo: home, agenda, página
-        própria e sitemap. A capa e as fotos do carrossel são enviadas depois,
-        na tela de edição do evento.
+        O evento entra no site assim que for salvo: home, agenda, página própria
+        e sitemap. A capa e as fotos do carrossel são enviadas depois, na tela de
+        edição do evento.
       </p>
-      <div className="mt-10 max-w-[64rem]">
+      <div className="mt-10">
         <EventForm />
       </div>
     </div>

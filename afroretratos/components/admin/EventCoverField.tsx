@@ -317,7 +317,7 @@ export function EventCoverField({
               ? "Capa atual: foto enviada pelo painel."
               : urlValue
                 ? "Capa atual: imagem definida no código do site."
-                : "Capa atual: composição gerada. A prévia acima é o que o site mostra."}
+                : "Capa atual: composição gerada pelo site. A prévia acima mostra o que aparece na página."}
           </p>
         </div>
 
