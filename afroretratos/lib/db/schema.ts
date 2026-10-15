@@ -1,6 +1,7 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -45,6 +46,43 @@ export const events = pgTable(
     uniqueIndex("events_slug_idx").on(table.slug),
     index("events_starts_at_idx").on(table.startsAt),
     index("events_status_idx").on(table.status),
+  ],
+);
+
+/**
+ * Fotos do evento enviadas pelo painel. O container de producao e read-only e
+ * troca de imagem a cada deploy, entao o arquivo vive no banco (Neon) e e
+ * servido por /api/event-images/[id] — nada em disco.
+ *
+ * kind: "cover" e a capa unica (substituida a cada envio);
+ *       "gallery" sao ate 3 fotos exibidas em carrossel na pagina do evento.
+ */
+export const eventImageKind = pgEnum("event_image_kind", ["cover", "gallery"]);
+
+export const eventImages = pgTable(
+  "event_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    kind: eventImageKind("kind").notNull().default("gallery"),
+    position: integer("position").notNull().default(0),
+    mime: text("mime").notNull(),
+    // Base64 da imagem. O TOAST do Postgres guarda o valor fora da linha.
+    data: text("data").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("event_images_event_id_idx").on(table.eventId, table.kind),
+    uniqueIndex("event_images_cover_idx")
+      .on(table.eventId)
+      .where(sql`${table.kind} = 'cover'`),
+    uniqueIndex("event_images_position_idx")
+      .on(table.eventId, table.position)
+      .where(sql`${table.kind} = 'gallery'`),
   ],
 );
 
@@ -121,6 +159,14 @@ export const reports = pgTable(
 
 export const eventsRelations = relations(events, ({ many }) => ({
   posts: many(posts),
+  images: many(eventImages),
+}));
+
+export const eventImagesRelations = relations(eventImages, ({ one }) => ({
+  event: one(events, {
+    fields: [eventImages.eventId],
+    references: [events.id],
+  }),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({

@@ -129,13 +129,38 @@ export type EventWriteInput = {
   title: string;
   slug: string;
   description: string;
-  coverImage: string | null;
   startsAt: string;
   endsAt: string | null;
   venue: string;
   location: string;
   status: EventStatus;
 };
+
+/**
+ * A capa do evento tem duas origens alternativas: arquivo enviado pelo painel
+ * (tabela event_images) ou URL externa (coluna cover_image). Esta funcao cuida
+ * da URL; quem chama garante que a outra origem seja limpa.
+ */
+export async function setEventCoverUrl(
+  id: string,
+  url: string | null,
+): Promise<boolean> {
+  const db = getDb();
+  if (db) {
+    const [row] = await db
+      .update(events)
+      .set({ coverImage: url, updatedAt: new Date() })
+      .where(eq(events.id, id))
+      .returning({ id: events.id });
+    return Boolean(row);
+  }
+
+  const event = mockDb().events.find((item) => item.id === id);
+  if (!event) return false;
+  event.coverImage = url;
+  event.updatedAt = new Date().toISOString();
+  return true;
+}
 
 export async function isSlugTaken(
   slug: string,
@@ -190,6 +215,7 @@ export async function createEvent(input: EventWriteInput): Promise<PublicEvent> 
   const row = {
     id: newId(),
     ...input,
+    coverImage: null,
     createdAt: now,
     updatedAt: now,
   };

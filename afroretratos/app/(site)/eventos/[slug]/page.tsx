@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EventCover } from "@/components/events/EventCover";
+import { EventGallery } from "@/components/events/EventGallery";
 import { EventStatusTag } from "@/components/events/EventStatusTag";
 import { PostEntry } from "@/components/feed/PostEntry";
 import { ActionLink } from "@/components/ui/Action";
 import { Arrow } from "@/components/ui/Arrow";
 import { ShareEvent } from "@/components/events/ShareEvent";
 import { formatDateTimeRange } from "@/lib/format";
+import { listEventImages } from "@/services/event-images";
 import { getEventBySlug } from "@/services/events";
 import { listPublicPostsByEvent } from "@/services/posts";
 
@@ -21,6 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!event) {
     return { title: "Evento não encontrado" };
   }
+  const images = await listEventImages(event.id);
+  const cover = images.find((image) => image.kind === "cover");
   return {
     title: event.title,
     description:
@@ -32,12 +36,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${event.title} · AfroRetratos`,
       description: event.description.slice(0, 180),
       images: [
-        {
-          url: "/brand/og-default.png",
-          width: 1200,
-          height: 630,
-          alt: `AfroRetratos: ${event.title}`,
-        },
+        cover
+          ? { url: `/api/event-images/${cover.id}`, alt: `Capa do evento ${event.title}` }
+          : {
+              url: "/brand/og-default.png",
+              width: 1200,
+              height: 630,
+              alt: `AfroRetratos: ${event.title}`,
+            },
       ],
     },
   };
@@ -48,7 +54,13 @@ export default async function EventoPage({ params }: Props) {
   const event = await getEventBySlug(slug);
   if (!event) notFound();
 
-  const relatedPosts = await listPublicPostsByEvent(event.id, 6);
+  const [relatedPosts, images] = await Promise.all([
+    listPublicPostsByEvent(event.id, 6),
+    listEventImages(event.id),
+  ]);
+
+  const cover = images.find((image) => image.kind === "cover");
+  const gallery = images.filter((image) => image.kind === "gallery");
 
   return (
     <article>
@@ -76,7 +88,7 @@ export default async function EventoPage({ params }: Props) {
         <EventCover
           slug={event.slug}
           title={event.title}
-          coverImage={event.coverImage}
+          coverImage={cover ? `/api/event-images/${cover.id}` : event.coverImage}
           dateLine={formatDateTimeRange(event.startsAt, event.endsAt)}
           placeLine={`${event.venue} — ${event.location}`}
           priority
@@ -150,6 +162,16 @@ export default async function EventoPage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      {gallery.length > 0 ? (
+        <EventGallery
+          title={event.title}
+          images={gallery.map((image) => ({
+            id: image.id,
+            url: `/api/event-images/${image.id}`,
+          }))}
+        />
+      ) : null}
 
       <section
         aria-labelledby="relatos-do-evento"

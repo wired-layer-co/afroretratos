@@ -28,7 +28,9 @@ const securityHeaders = [
       // proprio dominio. Nada mais de terceiros roda na pagina.
       `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com${devEval}`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
+      // data: e blob: servem a pre-visualizacao do arquivo escolhido no painel
+      // (a imagem sobe recortada e vira data URL na requisicao).
+      "img-src 'self' data: blob:",
       "font-src 'self'",
       "connect-src 'self' https://cloudflareinsights.com",
       "frame-ancestors 'none'",
@@ -44,6 +46,12 @@ const nextConfig: NextConfig = {
   // Imagem de produção enxuta para o Docker (server.js autocontido).
   output: "standalone",
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      // O painel envia a imagem ja recortada no navegador como data URL.
+      bodySizeLimit: "4mb",
+    },
+  },
   headers: async () => [
     {
       source: "/(.*)",

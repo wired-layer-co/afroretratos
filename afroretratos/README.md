@@ -104,6 +104,32 @@ bun run db:studio      # Drizzle Studio
 - Botão "Compartilhar" usa a folha nativa do sistema e cai para cópia do
   link quando não existe.
 
+## Fotos do evento (capa e carrossel)
+
+O painel do evento tem um bloco **Fotos do evento**, salvo na hora (sem
+depender do botão do formulário):
+
+- **Capa:** arquivo enviado pelo painel (`/admin/eventos/<id>`) ou URL externa,
+  alternativas entre si. O envio por arquivo abre uma moldura 2:1 com arraste e
+  zoom; o recorte e a redução acontecem no navegador, então o servidor não
+  precisa de biblioteca de imagem. Sem capa, o evento usa a composição gerada
+  com as cores da marca (o painel mostra essa composição como prévia).
+- **Carrossel:** até 3 fotos por evento, exibidas antes dos relatos na página
+  pública, em campo oliva, com setas, teclado, arraste e miniaturas.
+
+Decisões por trás disso:
+
+- **A imagem vive no banco** (tabela `event_images`, coluna `data` em base64);
+  o container de produção é `read_only` e é reconstruído a cada deploy, então
+  arquivo em disco não sobrevive. O Neon é a fonte de verdade.
+- **A imagem é servida por `/api/event-images/[id]`**, na mesma origem, o que
+  mantém o CSP em `img-src 'self' data: blob:` sem liberar host externo. O CSP
+  ganhou `blob:` por causa da pré-visualização do arquivo escolhido no painel.
+- **URL externa** exige liberar o host em `next.config.ts` (`img-src` e
+  `images.remotePatterns`); sem isso o navegador bloqueia a imagem.
+- O teto é 2,5 MB por imagem (`lib/validation/images.ts`) e 3 fotos por evento
+  (`services/event-images.ts`), reforçado no servidor.
+
 ## Privacidade e segurança
 
 - **IP nunca é público.** A API pública devolve apenas `id`, `content`,
@@ -216,9 +242,9 @@ roteador.
 - **Status de evento** é derivado da data na leitura (`displayStatus`),
   exceto `cancelled`, que sempre vence — evita "upcoming" vencido.
 - **Capas de evento** são composições geradas com as cores oficiais e o
-  ícone da marca (nenhuma fotografia simulada). Fotografia real entra pelo
-  campo `coverImage`; hosts externos precisam de `images.remotePatterns` em
-  `next.config.ts`.
+  ícone da marca (nenhuma fotografia simulada) quando o evento não tem capa
+  enviada. A capa real vem do painel, como arquivo ou URL externa (ver
+  "Fotos do evento" acima).
 - **Mock sem banco:** eventos/relatos de exemplo vivem em
   `lib/db/mock-data.ts` e são placeholders explícitos.
 - **Pendências:** copy institucional definitiva, arquivos oficiais de Hero

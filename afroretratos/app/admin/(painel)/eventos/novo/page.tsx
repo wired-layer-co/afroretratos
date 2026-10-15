@@ -17,7 +17,8 @@ export default function NewEventPage() {
       </h1>
       <p className="mt-3 max-w-[70ch] text-sm leading-relaxed text-brown-raised">
         O evento entra no site assim que for salvo: home, agenda, página
-        própria e sitemap.
+        própria e sitemap. A capa e as fotos do carrossel são enviadas depois,
+        na tela de edição do evento.
       </p>
       <div className="mt-10">
         <EventForm />

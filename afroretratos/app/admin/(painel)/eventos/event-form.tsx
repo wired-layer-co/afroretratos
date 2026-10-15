@@ -80,25 +80,6 @@ export function EventForm({ event }: { event?: PublicEvent }) {
         />
       </div>
 
-      <div>
-        <label htmlFor="coverImage" className={LABEL}>
-          Capa (URL)
-        </label>
-        <input
-          id="coverImage"
-          name="coverImage"
-          type="url"
-          defaultValue={event?.coverImage ?? ""}
-          placeholder="https://..."
-          className={FIELD}
-        />
-        <p className={HINT}>
-          Opcional. Sem capa, o evento usa a composição gerada com as cores da
-          marca. Melhor formato: paisagem 1600 × 800 px (2:1), JPG ou WebP de
-          até 500 KB. Hosts externos precisam de liberação em next.config.ts.
-        </p>
-      </div>
-
       <fieldset className="grid gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="startsDate" className={LABEL}>

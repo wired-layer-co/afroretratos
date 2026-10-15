@@ -1,0 +1,369 @@
+"use client";
+
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import {
+  removeEventCoverAction,
+  saveEventCoverAction,
+  saveEventCoverUrlAction,
+} from "@/app/admin/(painel)/eventos/image-actions";
+import { EventCover } from "@/components/events/EventCover";
+import { canvasToJpegDataUrl, isImageFile, loadImageFile } from "@/lib/images/browser";
+
+// A capa publica tem 2:1 (ver EventCover), entao o recorte ja sai nesse formato.
+const CROP_WIDTH = 1200;
+const CROP_HEIGHT = 600;
+
+const HINT = "mt-1 text-xs text-brown-raised";
+const LABEL = "text-xs font-medium tracking-[0.08em] text-brown-deep uppercase";
+const BUTTON_PRIMARY =
+  "inline-flex min-h-11 items-center justify-center rounded-md bg-wine px-5 py-2.5 text-xs font-medium tracking-[0.08em] text-beige uppercase transition-colors hover:bg-wine-deep disabled:cursor-not-allowed disabled:opacity-60";
+const BUTTON_QUIET =
+  "inline-flex min-h-11 items-center justify-center rounded-md border border-brown-deep/40 px-4 py-2.5 text-xs font-medium tracking-[0.08em] uppercase transition-colors hover:bg-brown-deep hover:text-beige";
+const FILE_INPUT =
+  "block w-full text-xs text-brown-raised file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-brown-deep/40 file:bg-transparent file:px-3 file:py-2 file:text-xs file:font-medium file:tracking-[0.08em] file:uppercase file:text-brown-deep hover:file:bg-brown-deep hover:file:text-beige";
+
+/**
+ * Capa do evento: arquivo enviado (recortado aqui em 2:1) ou URL externa, as
+ * duas origens alternativas para a mesma capa. Salvar uma limpa a outra.
+ */
+export function EventCoverField({
+  eventId,
+  slug,
+  title,
+  dateLine,
+  placeLine,
+  coverUrl,
+  urlValue,
+}: {
+  eventId: string;
+  slug: string;
+  title: string;
+  dateLine: string;
+  placeLine: string;
+  coverUrl: string | null;
+  urlValue: string | null;
+}) {
+  const [source, setSource] = useState<HTMLImageElement | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [zoom, setZoom] = useState(1);
+  const [center, setCenter] = useState({ x: 0.5, y: 0.5 });
+  const [url, setUrl] = useState(urlValue ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [urlPending, startUrlTransition] = useTransition();
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    from: { x: number; y: number };
+  } | null>(null);
+
+  const hasCover = Boolean(source || coverUrl || urlValue);
+
+  /** Escala que preenche a moldura sem deixar vazio. */
+  const geometry = useCallback((image: HTMLImageElement, currentZoom: number) => {
+    const scale =
+      Math.max(CROP_WIDTH / image.naturalWidth, CROP_HEIGHT / image.naturalHeight) *
+      currentZoom;
+    return {
+      width: image.naturalWidth * scale,
+      height: image.naturalHeight * scale,
+    };
+  }, []);
+
+  const paint = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    context.clearRect(0, 0, CROP_WIDTH, CROP_HEIGHT);
+    if (!source) return;
+
+    const { width, height } = geometry(source, zoom);
+    context.drawImage(
+      source,
+      (CROP_WIDTH - width) * center.x,
+      (CROP_HEIGHT - height) * center.y,
+      width,
+      height,
+    );
+  }, [center.x, center.y, geometry, source, zoom]);
+
+  useEffect(() => {
+    paint();
+  }, [paint]);
+
+  function clamp(value: number): number {
+    return Math.min(1, Math.max(0, value));
+  }
+
+  async function pick(file: File | undefined) {
+    setError(null);
+    setOk(null);
+    if (!file) return;
+    if (!isImageFile(file)) {
+      setError("Escolha um arquivo de imagem.");
+      return;
+    }
+    try {
+      const image = await loadImageFile(file);
+      setSource(image);
+      setFileName(file.name);
+      setZoom(1);
+      setCenter({ x: 0.5, y: 0.5 });
+    } catch {
+      setError("Não foi possível ler a imagem.");
+    }
+  }
+
+  function onPointerDown(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (!source) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragging(true);
+    dragRef.current = { startX: event.clientX, startY: event.clientY, from: { ...center } };
+  }
+
+  function onPointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
+    const drag = dragRef.current;
+    const canvas = canvasRef.current;
+    if (!drag || !canvas || !source) return;
+
+    // Movimento do ponteiro convertido para unidades da moldura.
+    const ratio = CROP_WIDTH / canvas.getBoundingClientRect().width;
+    const dx = (event.clientX - drag.startX) * ratio;
+    const dy = (event.clientY - drag.startY) * ratio;
+    const { width, height } = geometry(source, zoom);
+    const roomX = width - CROP_WIDTH;
+    const roomY = height - CROP_HEIGHT;
+
+    setCenter({
+      x: roomX > 1 ? clamp(drag.from.x - dx / roomX) : 0.5,
+      y: roomY > 1 ? clamp(drag.from.y - dy / roomY) : 0.5,
+    });
+  }
+
+  function onPointerUp() {
+    dragRef.current = null;
+    setDragging(false);
+  }
+
+  function saveFile() {
+    const canvas = canvasRef.current;
+    if (!canvas || !source) {
+      setError("Escolha uma imagem antes de salvar.");
+      return;
+    }
+    const formData = new FormData();
+    formData.set("eventId", eventId);
+    formData.set("image", canvasToJpegDataUrl(canvas));
+
+    startTransition(async () => {
+      const result = await saveEventCoverAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        setOk(null);
+        return;
+      }
+      setError(null);
+      setOk(result?.ok ?? "Capa atualizada.");
+      setSource(null);
+      setFileName("");
+      setUrl("");
+      if (inputRef.current) inputRef.current.value = "";
+    });
+  }
+
+  function saveUrl() {
+    const formData = new FormData();
+    formData.set("eventId", eventId);
+    formData.set("coverUrl", url);
+
+    startUrlTransition(async () => {
+      const result = await saveEventCoverUrlAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        setOk(null);
+        return;
+      }
+      setError(null);
+      setOk(result?.ok ?? "Capa atualizada.");
+      setSource(null);
+      setFileName("");
+      if (inputRef.current) inputRef.current.value = "";
+    });
+  }
+
+  return (
+    <div>
+      <h3 className="font-subtitle text-xl">Capa</h3>
+      <p className={HINT}>
+        Sem capa, o evento usa a composição gerada com as cores da marca. Escolha
+        um dos dois caminhos: enviar um arquivo (moldura 2:1, com arraste e zoom)
+        ou apontar uma URL externa. Um substitui o outro.
+      </p>
+
+      <div className="mt-4 grid gap-6">
+        <div className="max-w-[42rem]">
+          {source ? (
+            <div
+              className={`relative overflow-hidden border border-brown-deep/30 bg-beige ${
+                dragging ? "cursor-grabbing" : "cursor-grab"
+              }`}
+            >
+              <canvas
+                ref={canvasRef}
+                width={CROP_WIDTH}
+                height={CROP_HEIGHT}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+                className="block h-auto w-full touch-none select-none"
+                aria-label="Pré-visualização da capa"
+              />
+            </div>
+          ) : (
+            <div className="overflow-hidden border border-brown-deep/30">
+              {coverUrl || urlValue ? (
+                <div className="relative aspect-[2/1]">
+                  <Image
+                    src={coverUrl ?? (urlValue as string)}
+                    alt="Capa atual do evento"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 416px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                // Sem capa, o painel mostra a mesma composição que o site gera.
+                <EventCover
+                  slug={slug}
+                  title={title}
+                  dateLine={dateLine}
+                  placeLine={placeLine}
+                  className="w-full"
+                />
+              )}
+            </div>
+          )}
+
+          {source ? (
+            <div className="mt-3">
+              <label htmlFor="cover-zoom" className={LABEL}>
+                Zoom
+              </label>
+              <input
+                id="cover-zoom"
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(event) => setZoom(Number(event.target.value))}
+                className="mt-2 w-full accent-wine"
+              />
+              <p className={HINT}>
+                {fileName}. Arraste na imagem para escolher o recorte.
+              </p>
+            </div>
+          ) : null}
+
+          <p className="mt-3 text-xs text-brown-raised">
+            {coverUrl
+              ? "Capa atual: arquivo enviado pelo painel."
+              : urlValue
+                ? "Capa atual: URL externa."
+                : "Capa atual: composição gerada. A prévia acima é o que o site mostra."}
+          </p>
+        </div>
+
+        <div className="grid content-start gap-6 sm:grid-cols-2">
+          <div>
+            <p className={LABEL}>Opção 1 · enviar arquivo</p>
+            <input
+              ref={inputRef}
+              id="cover-file"
+              type="file"
+              accept="image/*"
+              onChange={(event) => void pick(event.target.files?.[0])}
+              className={`mt-2 ${FILE_INPUT}`}
+            />
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={saveFile}
+                disabled={pending || !source}
+                className={BUTTON_PRIMARY}
+              >
+                {pending ? "Salvando…" : "Salvar arquivo"}
+              </button>
+              {source ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoom(1);
+                    setCenter({ x: 0.5, y: 0.5 });
+                  }}
+                  className={BUTTON_QUIET}
+                >
+                  Reenquadrar
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="sm:border-l sm:border-brown-deep/20 sm:pl-6">
+            <label htmlFor="cover-url" className={LABEL}>
+              Opção 2 · usar URL externa
+            </label>
+            <input
+              id="cover-url"
+              type="url"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="https://..."
+              className="mt-2 w-full rounded-md border border-brown-deep/40 bg-beige-light/60 px-3 py-2.5 text-base text-brown-deep focus:border-wine focus-visible:outline-wine sm:text-sm"
+            />
+            <p className={HINT}>
+              Hosts externos precisam ser liberados em <code>next.config.ts</code>{" "}
+              (CSP <code>img-src</code> e <code>remotePatterns</code>).
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={saveUrl}
+                disabled={urlPending}
+                className={BUTTON_QUIET}
+              >
+                {urlPending ? "Salvando…" : url.trim() ? "Salvar URL" : "Limpar URL"}
+              </button>
+              {hasCover ? (
+                <form action={removeEventCoverAction}>
+                  <input type="hidden" name="eventId" value={eventId} />
+                  <button type="submit" className={BUTTON_QUIET}>
+                    Remover capa
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p aria-live="polite" className="mt-4 min-h-5 text-xs">
+        {error ? (
+          <span className="text-wine">{error}</span>
+        ) : ok ? (
+          <span className="font-medium text-olive-deep">{ok}</span>
+        ) : null}
+      </p>
+    </div>
+  );
+}

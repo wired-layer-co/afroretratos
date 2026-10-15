@@ -1,12 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { slugify } from "../lib/slug";
-import { eventSchema, toEventIso } from "../lib/validation/events";
+import {
+  eventCoverUrlSchema,
+  eventSchema,
+  toEventIso,
+} from "../lib/validation/events";
 
 const base = {
   title: "Roda de Conversa PUCPR",
   slug: "",
   description: "",
-  coverImage: "",
   startsDate: "2026-09-28",
   startsTime: "",
   endsDate: "",
@@ -47,7 +50,6 @@ describe("eventSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.slug).toBe("");
-      expect(result.data.coverImage).toBeNull();
       expect(result.data.description).toBe("");
       expect(result.data.venue).toBe("");
     }
@@ -83,19 +85,14 @@ describe("eventSchema", () => {
   });
 
   test("rejeita URL de capa inválida", () => {
-    expect(
-      eventSchema.safeParse({ ...base, coverImage: "nao-e-url" }).success,
-    ).toBe(false);
+    expect(eventCoverUrlSchema.safeParse("nao-e-url").success).toBe(false);
   });
 
-  test("aceita URL de capa válida", () => {
-    const result = eventSchema.safeParse({
-      ...base,
-      coverImage: "https://example.com/capa.png",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.coverImage).toBe("https://example.com/capa.png");
-    }
+  test("aceita URL de capa válida e trata vazio como ausência", () => {
+    expect(eventCoverUrlSchema.safeParse("https://example.com/capa.png").data).toBe(
+      "https://example.com/capa.png",
+    );
+    expect(eventCoverUrlSchema.safeParse("").data).toBeNull();
+    expect(eventCoverUrlSchema.safeParse(undefined).data).toBeNull();
   });
 });

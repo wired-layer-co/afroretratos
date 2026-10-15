@@ -41,8 +41,9 @@ export function EventCover({
   priority?: boolean;
 }) {
   if (coverImage) {
+    // 2:1 e o formato do recorte enviado pelo painel (ver EventCoverField).
     return (
-      <div className={`relative overflow-hidden bg-wine ${className}`}>
+      <div className={`relative aspect-[2/1] overflow-hidden bg-wine ${className}`}>
         <Image
           src={coverImage}
           alt={`Capa do evento ${title}`}
@@ -76,8 +77,16 @@ export function EventCover({
 
   return (
     <div className={`relative overflow-hidden bg-wine-deep ${className}`}>
+      {/* O icone vem antes das barras no DOM: onde houver texto, o texto vence. */}
+      <Image
+        src="/brand/afroretratos-icone-bege.png"
+        alt=""
+        width={809}
+        height={727}
+        className="absolute top-1/2 right-[7%] h-[32%] w-auto -translate-y-1/2 sm:h-[40%]"
+      />
       <div
-        className="flex flex-col justify-center gap-1.5 py-8 pr-[30%] sm:gap-2 sm:py-12 sm:pr-[16%]"
+        className="relative flex flex-col justify-center gap-1.5 py-8 pr-[30%] sm:gap-2 sm:py-12 sm:pr-[16%]"
         style={{ paddingLeft: `${offset}%` }}
       >
         {rows.map((row, index) => {
@@ -109,13 +118,6 @@ export function EventCover({
           );
         })}
       </div>
-      <Image
-        src="/brand/afroretratos-icone-bege.png"
-        alt=""
-        width={809}
-        height={727}
-        className="absolute top-1/2 right-[7%] h-[40%] w-auto -translate-y-1/2"
-      />
     </div>
   );
 }
