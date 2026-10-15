@@ -22,6 +22,10 @@ const LAYOUTS = [
  * local do evento, em ritmo irregular, com o icone da marca. Nenhuma
  * fotografia e simulada. Quando o evento tiver coverImage real, ela assume o
  * lugar automaticamente.
+ *
+ * O icone tem tamanho fixo (px) e as barras sao % da largura, entao a faixa
+ * da direita e reservada em px (pr-36/pr-60) para os dois nunca colidirem,
+ * seja na pagina larga ou na previa estreita do painel.
  */
 export function EventCover({
   slug,
@@ -77,16 +81,16 @@ export function EventCover({
 
   return (
     <div className={`relative overflow-hidden bg-wine-deep ${className}`}>
-      {/* O icone vem antes das barras no DOM: onde houver texto, o texto vence. */}
+      {/* Icone e barras medidos na largura: nunca colidem, em nenhuma tela. */}
       <Image
         src="/brand/afroretratos-icone-bege.png"
         alt=""
         width={809}
         height={727}
-        className="absolute top-1/2 right-[7%] h-[32%] w-auto -translate-y-1/2 sm:h-[40%]"
+        className="absolute top-1/2 right-[6%] h-auto w-[24%] -translate-y-1/2 sm:w-[16%]"
       />
       <div
-        className="relative flex flex-col justify-center gap-1.5 py-8 pr-[30%] sm:gap-2 sm:py-12 sm:pr-[16%]"
+        className="relative flex flex-col justify-center gap-1.5 py-8 pr-[30%] sm:gap-2 sm:py-12 sm:pr-[24%]"
         style={{ paddingLeft: `${offset}%` }}
       >
         {rows.map((row, index) => {

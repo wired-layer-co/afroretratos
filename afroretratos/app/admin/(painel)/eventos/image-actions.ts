@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/guard";
-import { eventCoverUrlSchema } from "@/lib/validation/events";
 import { parseImageDataUrl } from "@/lib/validation/images";
 import {
   addGalleryImage,
@@ -49,7 +48,7 @@ export async function saveEventCoverAction(
 
   try {
     await saveEventCover(event.id, image);
-    // Arquivo e URL sao alternativas: enviar um limpa o outro.
+    // Capa sempre vem de arquivo agora; URL antiga deixa de valer.
     await setEventCoverUrl(event.id, null);
   } catch {
     return { error: "Não foi possível salvar a capa." };
@@ -57,31 +56,6 @@ export async function saveEventCoverAction(
 
   revalidateEvent(event.slug);
   return { ok: "Capa atualizada." };
-}
-
-/** Capa por URL externa (alternativa ao arquivo enviado). */
-export async function saveEventCoverUrlAction(
-  formData: FormData,
-): Promise<ImageActionState> {
-  await requireAdmin();
-
-  const eventId = String(formData.get("eventId") ?? "");
-  const event = await resolveEvent(eventId);
-  if (!event) return { error: "Evento não encontrado." };
-
-  const parsed = eventCoverUrlSchema.safeParse(String(formData.get("coverUrl") ?? ""));
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "URL inválida." };
-  }
-
-  await setEventCoverUrl(event.id, parsed.data);
-  if (parsed.data) {
-    // A URL passa a valer: descarta o arquivo enviado antes.
-    await deleteEventCover(event.id);
-  }
-
-  revalidateEvent(event.slug);
-  return { ok: parsed.data ? "Capa definida pela URL." : "URL da capa removida." };
 }
 
 export async function removeEventCoverAction(

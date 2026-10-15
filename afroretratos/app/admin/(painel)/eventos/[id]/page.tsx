@@ -4,6 +4,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { EventCoverField } from "@/components/admin/EventCoverField";
 import { EventGalleryField } from "@/components/admin/EventGalleryField";
 import { EventGalleryPreview } from "@/components/admin/EventGalleryPreview";
+import { EventTabs } from "@/components/admin/EventTabs";
 import { hasDatabase } from "@/lib/db/client";
 import { formatDateTimeRange } from "@/lib/format";
 import {
@@ -64,63 +65,69 @@ export default async function EditEventPage({ params }: Props) {
           </ConfirmButton>
         </form>
       </div>
-      <div className="mt-10">
-        <EventForm event={event} />
+
+      {/* Duas abas: os dados do evento e as imagens. */}
+      <div className="mt-8 max-w-[64rem]">
+        <EventTabs
+          imageCount={gallery.length + (cover ? 1 : 0)}
+          data={<EventForm event={event} />}
+          images={
+            <section
+              aria-labelledby="fotos-do-evento"
+              className="rounded-lg border border-brown-deep/25 bg-beige-light/50 p-6 sm:p-8"
+            >
+              <h2
+                id="fotos-do-evento"
+                className="font-display text-[clamp(1.5rem,3vw,2.1rem)] leading-none"
+              >
+                Fotos do evento
+              </h2>
+              <p className="mt-3 text-sm text-brown-raised">
+                A capa substitui a composição gerada com as cores da marca. As
+                fotos do carrossel aparecem na página do evento, antes dos
+                relatos. Cada envio é salvo na hora.
+              </p>
+
+              {databaseReady ? (
+                <>
+                  <div className="mt-8">
+                    <EventCoverField
+                      eventId={event.id}
+                      slug={event.slug}
+                      title={event.title}
+                      dateLine={formatDateTimeRange(event.startsAt, event.endsAt)}
+                      placeLine={`${event.venue} — ${event.location}`}
+                      coverUrl={cover ? `/api/event-images/${cover.id}` : null}
+                      urlValue={event.coverImage}
+                    />
+                  </div>
+
+                  <EventGalleryField
+                    eventId={event.id}
+                    remaining={MAX_GALLERY_IMAGES - gallery.length}
+                    used={gallery.length}
+                  />
+
+                  {gallery.length > 0 ? (
+                    <EventGalleryPreview
+                      eventId={event.id}
+                      images={gallery.map((image) => ({
+                        id: image.id,
+                        url: `/api/event-images/${image.id}`,
+                      }))}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <p className="mt-6 rounded-md border border-brown-deep/30 p-4 text-sm text-brown-raised">
+                  As fotos precisam do banco de dados. Configure{" "}
+                  <code>DATABASE_URL</code> para enviar capa e carrossel.
+                </p>
+              )}
+            </section>
+          }
+        />
       </div>
-
-      <section
-        aria-labelledby="fotos-do-evento"
-        className="mt-14 max-w-3xl rounded-lg border border-brown-deep/25 bg-beige-light/50 p-6 sm:p-8"
-      >
-        <h2
-          id="fotos-do-evento"
-          className="font-display text-[clamp(1.5rem,3vw,2.1rem)] leading-none"
-        >
-          Fotos do evento
-        </h2>
-        <p className="mt-3 text-sm text-brown-raised">
-          A capa substitui a composição gerada com as cores da marca. As fotos do
-          carrossel aparecem na página do evento, antes dos relatos. Cada envio é
-          salvo na hora, sem depender do botão do formulário acima.
-        </p>
-
-        {databaseReady ? (
-          <>
-            <div className="mt-8">
-              <EventCoverField
-                eventId={event.id}
-                slug={event.slug}
-                title={event.title}
-                dateLine={formatDateTimeRange(event.startsAt, event.endsAt)}
-                placeLine={`${event.venue} — ${event.location}`}
-                coverUrl={cover ? `/api/event-images/${cover.id}` : null}
-                urlValue={event.coverImage}
-              />
-            </div>
-
-            <EventGalleryField
-              eventId={event.id}
-              remaining={MAX_GALLERY_IMAGES - gallery.length}
-              used={gallery.length}
-            />
-
-            {gallery.length > 0 ? (
-              <EventGalleryPreview
-                eventId={event.id}
-                images={gallery.map((image) => ({
-                  id: image.id,
-                  url: `/api/event-images/${image.id}`,
-                }))}
-              />
-            ) : null}
-          </>
-        ) : (
-          <p className="mt-6 rounded-md border border-brown-deep/30 p-4 text-sm text-brown-raised">
-            As fotos precisam do banco de dados. Configure{" "}
-            <code>DATABASE_URL</code> para enviar capa e carrossel.
-          </p>
-        )}
-      </section>
     </div>
   );
 }

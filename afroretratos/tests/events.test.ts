@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { slugify } from "../lib/slug";
-import {
-  eventCoverUrlSchema,
-  eventSchema,
-  toEventIso,
-} from "../lib/validation/events";
+import { eventSchema, toEventIso } from "../lib/validation/events";
 
 const base = {
   title: "Roda de Conversa PUCPR",
@@ -82,17 +78,5 @@ describe("eventSchema", () => {
     const result = eventSchema.safeParse({ ...base, slug: "Meu Evento!" });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.slug).toBe("meu-evento");
-  });
-
-  test("rejeita URL de capa inválida", () => {
-    expect(eventCoverUrlSchema.safeParse("nao-e-url").success).toBe(false);
-  });
-
-  test("aceita URL de capa válida e trata vazio como ausência", () => {
-    expect(eventCoverUrlSchema.safeParse("https://example.com/capa.png").data).toBe(
-      "https://example.com/capa.png",
-    );
-    expect(eventCoverUrlSchema.safeParse("").data).toBeNull();
-    expect(eventCoverUrlSchema.safeParse(undefined).data).toBeNull();
   });
 });

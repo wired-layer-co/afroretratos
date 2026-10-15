@@ -18,7 +18,7 @@ export function EventForm({ event }: { event?: PublicEvent }) {
   >(saveEventAction, null);
 
   return (
-    <form action={formAction} className="max-w-3xl space-y-8">
+    <form action={formAction} className="w-full space-y-8">
       {event ? <input type="hidden" name="id" value={event.id} /> : null}
       {event ? (
         <input type="hidden" name="previousSlug" value={event.slug} />

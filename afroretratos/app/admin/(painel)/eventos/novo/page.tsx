@@ -20,7 +20,7 @@ export default function NewEventPage() {
         própria e sitemap. A capa e as fotos do carrossel são enviadas depois,
         na tela de edição do evento.
       </p>
-      <div className="mt-10">
+      <div className="mt-10 max-w-[64rem]">
         <EventForm />
       </div>
     </div>

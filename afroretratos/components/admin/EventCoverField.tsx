@@ -5,12 +5,16 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   removeEventCoverAction,
   saveEventCoverAction,
-  saveEventCoverUrlAction,
 } from "@/app/admin/(painel)/eventos/image-actions";
 import { EventCover } from "@/components/events/EventCover";
 import { canvasToJpegDataUrl, isImageFile, loadImageFile } from "@/lib/images/browser";
 
-// A capa publica tem 2:1 (ver EventCover), entao o recorte ja sai nesse formato.
+// A previa do painel reproduz o site: o cartao renderiza a composicao na
+// largura de referencia do desktop e reduz com transform, mantendo as
+// proporcoes exatas (as barras sao % da largura, o icone tambem).
+const SITE_REFERENCE_WIDTH = 1440;
+
+// A capa publica com foto tem 2:1 (ver EventCover), entao o recorte ja sai nesse formato.
 const CROP_WIDTH = 1200;
 const CROP_HEIGHT = 600;
 
@@ -24,8 +28,8 @@ const FILE_INPUT =
   "block w-full text-xs text-brown-raised file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-brown-deep/40 file:bg-transparent file:px-3 file:py-2 file:text-xs file:font-medium file:tracking-[0.08em] file:uppercase file:text-brown-deep hover:file:bg-brown-deep hover:file:text-beige";
 
 /**
- * Capa do evento: arquivo enviado (recortado aqui em 2:1) ou URL externa, as
- * duas origens alternativas para a mesma capa. Salvar uma limpa a outra.
+ * Capa do evento: o arquivo enviado aqui e recortado na moldura 2:1 e vira a
+ * capa da pagina publica. O recorte e a reducao acontecem no navegador.
  */
 export function EventCoverField({
   eventId,
@@ -48,15 +52,17 @@ export function EventCoverField({
   const [fileName, setFileName] = useState("");
   const [zoom, setZoom] = useState(1);
   const [center, setCenter] = useState({ x: 0.5, y: 0.5 });
-  const [url, setUrl] = useState(urlValue ?? "");
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [urlPending, startUrlTransition] = useTransition();
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const previewBoxRef = useRef<HTMLDivElement | null>(null);
+  const previewInnerRef = useRef<HTMLDivElement | null>(null);
+  const [previewScale, setPreviewScale] = useState(1);
+  const [previewHeight, setPreviewHeight] = useState<number | null>(null);
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -98,6 +104,30 @@ export function EventCoverField({
   useEffect(() => {
     paint();
   }, [paint]);
+
+  /**
+   * Ajusta a escala da previa da composicao gerada sempre que a caixa (ou o
+   * conteudo) mudar de tamanho.
+   */
+  useEffect(() => {
+    const box = previewBoxRef.current;
+    const inner = previewInnerRef.current;
+    if (!box || !inner) return;
+
+    const update = () => {
+      // Painel escondido mede 0: mantem o ultimo valor ate ficar visivel.
+      if (box.clientWidth === 0) return;
+      const scale = box.clientWidth / SITE_REFERENCE_WIDTH;
+      setPreviewScale(scale);
+      setPreviewHeight(inner.offsetHeight * scale);
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [source, coverUrl, urlValue, slug, title, dateLine, placeLine]);
 
   function clamp(value: number): number {
     return Math.min(1, Math.max(0, value));
@@ -174,27 +204,6 @@ export function EventCoverField({
       setOk(result?.ok ?? "Capa atualizada.");
       setSource(null);
       setFileName("");
-      setUrl("");
-      if (inputRef.current) inputRef.current.value = "";
-    });
-  }
-
-  function saveUrl() {
-    const formData = new FormData();
-    formData.set("eventId", eventId);
-    formData.set("coverUrl", url);
-
-    startUrlTransition(async () => {
-      const result = await saveEventCoverUrlAction(formData);
-      if (result?.error) {
-        setError(result.error);
-        setOk(null);
-        return;
-      }
-      setError(null);
-      setOk(result?.ok ?? "Capa atualizada.");
-      setSource(null);
-      setFileName("");
       if (inputRef.current) inputRef.current.value = "";
     });
   }
@@ -203,13 +212,12 @@ export function EventCoverField({
     <div>
       <h3 className="font-subtitle text-xl">Capa</h3>
       <p className={HINT}>
-        Sem capa, o evento usa a composição gerada com as cores da marca. Escolha
-        um dos dois caminhos: enviar um arquivo (moldura 2:1, com arraste e zoom)
-        ou apontar uma URL externa. Um substitui o outro.
+        Sem capa, o evento usa a composição gerada com as cores da marca. Envie
+        uma foto e enquadre na moldura 2:1: a prévia acima mostra o resultado.
       </p>
 
       <div className="mt-4 grid gap-6">
-        <div className="max-w-[42rem]">
+        <div>
           {source ? (
             <div
               className={`relative overflow-hidden border border-brown-deep/30 bg-beige ${
@@ -229,27 +237,41 @@ export function EventCoverField({
               />
             </div>
           ) : (
-            <div className="overflow-hidden border border-brown-deep/30">
+            <div
+              ref={previewBoxRef}
+              className="relative overflow-hidden border border-brown-deep/30"
+              style={previewHeight ? { height: previewHeight } : undefined}
+            >
               {coverUrl || urlValue ? (
                 <div className="relative aspect-[2/1]">
                   <Image
                     src={coverUrl ?? (urlValue as string)}
                     alt="Capa atual do evento"
                     fill
-                    sizes="(max-width: 1024px) 100vw, 416px"
+                    sizes="(max-width: 1024px) 100vw, 640px"
                     className="object-cover"
                     unoptimized
                   />
                 </div>
               ) : (
-                // Sem capa, o painel mostra a mesma composição que o site gera.
-                <EventCover
-                  slug={slug}
-                  title={title}
-                  dateLine={dateLine}
-                  placeLine={placeLine}
-                  className="w-full"
-                />
+                // A composicao gerada e renderizada na largura do site e reduzida
+                // por transform: as proporcoes ficam identicas as da pagina.
+                <div
+                  ref={previewInnerRef}
+                  className="absolute top-0 left-0 origin-top-left"
+                  style={{
+                    width: SITE_REFERENCE_WIDTH,
+                    transform: `scale(${previewScale})`,
+                  }}
+                >
+                  <EventCover
+                    slug={slug}
+                    title={title}
+                    dateLine={dateLine}
+                    placeLine={placeLine}
+                    className="w-full"
+                  />
+                </div>
               )}
             </div>
           )}
@@ -277,82 +299,57 @@ export function EventCoverField({
 
           <p className="mt-3 text-xs text-brown-raised">
             {coverUrl
-              ? "Capa atual: arquivo enviado pelo painel."
+              ? "Capa atual: foto enviada pelo painel."
               : urlValue
-                ? "Capa atual: URL externa."
+                ? "Capa atual: imagem definida no código do site."
                 : "Capa atual: composição gerada. A prévia acima é o que o site mostra."}
           </p>
         </div>
 
-        <div className="grid content-start gap-6 sm:grid-cols-2">
-          <div>
-            <p className={LABEL}>Opção 1 · enviar arquivo</p>
-            <input
-              ref={inputRef}
-              id="cover-file"
-              type="file"
-              accept="image/*"
-              onChange={(event) => void pick(event.target.files?.[0])}
-              className={`mt-2 ${FILE_INPUT}`}
-            />
-            <div className="mt-3 flex flex-wrap gap-3">
+        <div>
+          <label htmlFor="cover-file" className={LABEL}>
+            Enviar capa
+          </label>
+          <input
+            ref={inputRef}
+            id="cover-file"
+            type="file"
+            accept="image/*"
+            onChange={(event) => void pick(event.target.files?.[0])}
+            className={`mt-2 max-w-[26rem] ${FILE_INPUT}`}
+          />
+          <p className={HINT}>
+            JPG, PNG ou WebP de até 2,5 MB. O site corta na moldura 2:1.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={saveFile}
+              disabled={pending || !source}
+              className={BUTTON_PRIMARY}
+            >
+              {pending ? "Salvando…" : "Salvar capa"}
+            </button>
+            {source ? (
               <button
                 type="button"
-                onClick={saveFile}
-                disabled={pending || !source}
-                className={BUTTON_PRIMARY}
-              >
-                {pending ? "Salvando…" : "Salvar arquivo"}
-              </button>
-              {source ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setZoom(1);
-                    setCenter({ x: 0.5, y: 0.5 });
-                  }}
-                  className={BUTTON_QUIET}
-                >
-                  Reenquadrar
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="sm:border-l sm:border-brown-deep/20 sm:pl-6">
-            <label htmlFor="cover-url" className={LABEL}>
-              Opção 2 · usar URL externa
-            </label>
-            <input
-              id="cover-url"
-              type="url"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://..."
-              className="mt-2 w-full rounded-md border border-brown-deep/40 bg-beige-light/60 px-3 py-2.5 text-base text-brown-deep focus:border-wine focus-visible:outline-wine sm:text-sm"
-            />
-            <p className={HINT}>
-              Hosts externos precisam ser liberados em <code>next.config.ts</code>{" "}
-              (CSP <code>img-src</code> e <code>remotePatterns</code>).
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={saveUrl}
-                disabled={urlPending}
+                onClick={() => {
+                  setZoom(1);
+                  setCenter({ x: 0.5, y: 0.5 });
+                }}
                 className={BUTTON_QUIET}
               >
-                {urlPending ? "Salvando…" : url.trim() ? "Salvar URL" : "Limpar URL"}
+                Reenquadrar
               </button>
-              {hasCover ? (
-                <form action={removeEventCoverAction}>
-                  <input type="hidden" name="eventId" value={eventId} />
-                  <button type="submit" className={BUTTON_QUIET}>
-                    Remover capa
-                  </button>
-                </form>
-              ) : null}
-            </div>
+            ) : null}
+            {hasCover ? (
+              <form action={removeEventCoverAction}>
+                <input type="hidden" name="eventId" value={eventId} />
+                <button type="submit" className={BUTTON_QUIET}>
+                  Remover capa
+                </button>
+              </form>
+            ) : null}
           </div>
         </div>
       </div>

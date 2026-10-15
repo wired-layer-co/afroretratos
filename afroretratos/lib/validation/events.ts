@@ -77,18 +77,6 @@ export const eventSchema = z
 
 export type EventInput = z.output<typeof eventSchema>;
 
-/**
- * A capa e gerenciada fora do formulario do evento (arquivo enviado pelo
- * painel ou URL externa), entao tem validacao propria.
- */
-export const eventCoverUrlSchema = z
-  .string()
-  .trim()
-  .optional()
-  .default("")
-  .transform((value) => (value.length > 0 ? value : null))
-  .pipe(z.union([z.url("URL da capa inválida."), z.null()]));
-
 export const eventFormFields = [
   "title",
   "slug",

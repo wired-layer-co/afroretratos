@@ -106,14 +106,14 @@ bun run db:studio      # Drizzle Studio
 
 ## Fotos do evento (capa e carrossel)
 
-O painel do evento tem um bloco **Fotos do evento**, salvo na hora (sem
-depender do botão do formulário):
+O painel do evento tem duas abas: **Dados** e **Imagens**. Na aba Imagens, cada
+envio é salvo na hora (sem depender do botão do formulário):
 
-- **Capa:** arquivo enviado pelo painel (`/admin/eventos/<id>`) ou URL externa,
-  alternativas entre si. O envio por arquivo abre uma moldura 2:1 com arraste e
-  zoom; o recorte e a redução acontecem no navegador, então o servidor não
-  precisa de biblioteca de imagem. Sem capa, o evento usa a composição gerada
-  com as cores da marca (o painel mostra essa composição como prévia).
+- **Capa:** uma foto enviada pelo painel. O envio abre uma moldura 2:1 com
+  arraste e zoom; o recorte e a redução acontecem no navegador, então o servidor
+  não precisa de biblioteca de imagem. Sem capa, o evento usa a composição
+  gerada com as cores da marca (o painel mostra essa composição como prévia, na
+  largura do site reduzida).
 - **Carrossel:** até 3 fotos por evento, exibidas antes dos relatos na página
   pública, em campo oliva, com setas, teclado, arraste e miniaturas.
 
@@ -123,10 +123,9 @@ Decisões por trás disso:
   o container de produção é `read_only` e é reconstruído a cada deploy, então
   arquivo em disco não sobrevive. O Neon é a fonte de verdade.
 - **A imagem é servida por `/api/event-images/[id]`**, na mesma origem, o que
-  mantém o CSP em `img-src 'self' data: blob:` sem liberar host externo. O CSP
-  ganhou `blob:` por causa da pré-visualização do arquivo escolhido no painel.
-- **URL externa** exige liberar o host em `next.config.ts` (`img-src` e
-  `images.remotePatterns`); sem isso o navegador bloqueia a imagem.
+  mantém o CSP restrito (`img-src 'self' data: blob:`) sem liberar host externo.
+- **Não há capa por URL externa:** o site não carrega imagem de terceiros
+  (CSP), então a única entrada é o arquivo enviado pelo painel.
 - O teto é 2,5 MB por imagem (`lib/validation/images.ts`) e 3 fotos por evento
   (`services/event-images.ts`), reforçado no servidor.
 
