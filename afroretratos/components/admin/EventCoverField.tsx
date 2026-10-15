@@ -7,6 +7,7 @@ import {
   saveEventCoverAction,
 } from "@/app/admin/(painel)/eventos/image-actions";
 import { EventCover } from "@/components/events/EventCover";
+import { FilePicker } from "@/components/admin/FilePicker";
 import { canvasToJpegDataUrl, isImageFile, loadImageFile } from "@/lib/images/browser";
 
 // A previa do painel reproduz o site: o cartao renderiza a composicao na
@@ -24,8 +25,6 @@ const BUTTON_PRIMARY =
   "inline-flex min-h-11 items-center justify-center rounded-md bg-wine px-5 py-2.5 text-xs font-medium tracking-[0.08em] text-beige uppercase transition-colors hover:bg-wine-deep disabled:cursor-not-allowed disabled:opacity-60";
 const BUTTON_QUIET =
   "inline-flex min-h-11 items-center justify-center rounded-md border border-brown-deep/40 px-4 py-2.5 text-xs font-medium tracking-[0.08em] uppercase transition-colors hover:bg-brown-deep hover:text-beige";
-const FILE_INPUT =
-  "block w-full text-xs text-brown-raised file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-brown-deep/40 file:bg-transparent file:px-3 file:py-2 file:text-xs file:font-medium file:tracking-[0.08em] file:uppercase file:text-brown-deep hover:file:bg-brown-deep hover:file:text-beige";
 
 /**
  * Capa do evento: o arquivo enviado aqui e recortado na moldura 2:1 e vira a
@@ -208,6 +207,22 @@ export function EventCoverField({
     });
   }
 
+  function removeCover() {
+    const formData = new FormData();
+    formData.set("eventId", eventId);
+    startTransition(async () => {
+      await removeEventCoverAction(formData);
+      // Limpa tambem a escolha pendente: sem isso a previa continuaria na tela.
+      setSource(null);
+      setFileName("");
+      setZoom(1);
+      setCenter({ x: 0.5, y: 0.5 });
+      if (inputRef.current) inputRef.current.value = "";
+      setError(null);
+      setOk("Capa removida.");
+    });
+  }
+
   return (
     <div>
       <h3 className="font-subtitle text-xl">Capa</h3>
@@ -307,16 +322,14 @@ export function EventCoverField({
         </div>
 
         <div>
-          <label htmlFor="cover-file" className={LABEL}>
-            Enviar capa
-          </label>
-          <input
-            ref={inputRef}
+          <p className={LABEL}>Enviar capa</p>
+          <FilePicker
             id="cover-file"
-            type="file"
-            accept="image/*"
+            name="cover"
+            label="Escolher imagem"
+            inputRef={inputRef}
             onChange={(event) => void pick(event.target.files?.[0])}
-            className={`mt-2 max-w-[26rem] ${FILE_INPUT}`}
+            statusText={fileName ? `Selecionada: ${fileName}` : "Nenhuma imagem selecionada"}
           />
           <p className={HINT}>
             JPG, PNG ou WebP de até 2,5 MB. O site corta na moldura 2:1.
@@ -343,12 +356,14 @@ export function EventCoverField({
               </button>
             ) : null}
             {hasCover ? (
-              <form action={removeEventCoverAction}>
-                <input type="hidden" name="eventId" value={eventId} />
-                <button type="submit" className={BUTTON_QUIET}>
-                  Remover capa
-                </button>
-              </form>
+              <button
+                type="button"
+                onClick={removeCover}
+                disabled={pending}
+                className={BUTTON_QUIET}
+              >
+                {pending ? "Removendo…" : "Remover capa"}
+              </button>
             ) : null}
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { addEventImageAction } from "@/app/admin/(painel)/eventos/image-actions";
+import { FilePicker } from "@/components/admin/FilePicker";
 import { canvasToJpegDataUrl, isImageFile, loadImageFile } from "@/lib/images/browser";
 
 const MAX_SIDE = 1600;
@@ -101,15 +102,15 @@ export function EventGalleryField({
       </p>
 
       {remaining > 0 ? (
-        <input
-          ref={inputRef}
+        <FilePicker
           id="gallery-file"
-          type="file"
-          accept="image/*"
+          name="gallery"
+          label="Escolher fotos"
           multiple
           disabled={busy}
+          inputRef={inputRef}
           onChange={(event) => void upload(event.target.files)}
-          className="mt-4 block w-full max-w-[26rem] text-xs text-brown-raised file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-brown-deep/40 file:bg-transparent file:px-3 file:py-2 file:text-xs file:font-medium file:tracking-[0.08em] file:uppercase file:text-brown-deep hover:file:bg-brown-deep hover:file:text-beige disabled:opacity-60"
+          statusText="Até 3 fotos por evento"
         />
       ) : (
         <p className="mt-4 text-sm text-brown-raised">
