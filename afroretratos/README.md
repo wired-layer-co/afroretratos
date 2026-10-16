@@ -46,7 +46,8 @@ processo (não compartilha entre instâncias).
 
 | Variável | Obrigatória | Descrição |
 | --- | --- | --- |
-| `DATABASE_URL` | produção | Postgres (Neon: `postgres://...?sslmode=require`). |
+| `DATABASE_URL` | produção | Postgres (Supabase: pooler de transação `...pooler.supabase.com:6543/postgres?sslmode=require`). |
+| `DIRECT_DATABASE_URL` | produção | Mesma instância pela porta 5432 (pooler de sessão), usada pelas migrations. |
 | `REDIS_URL` | recomendada | Redis (Upstash TCP: `rediss://default:...@host:6379`). |
 | `ORIGIN_HASH_SECRET` | produção | Segredo do HMAC que gera o `ip_hash` (≥16 caracteres). Em produção o app **falha** sem ele. |
 | `ORIGIN_ENCRYPTION_KEY` | opcional | AES-256-GCM (32 bytes em base64) para guardar o IP original; sem ela, nenhum IP é armazenado. |
@@ -121,7 +122,7 @@ Decisões por trás disso:
 
 - **A imagem vive no banco** (tabela `event_images`, coluna `data` em base64);
   o container de produção é `read_only` e é reconstruído a cada deploy, então
-  arquivo em disco não sobrevive. O Neon é a fonte de verdade.
+  arquivo em disco não sobrevive. O Supabase é a fonte de verdade.
 - **A imagem é servida por `/api/event-images/[id]`**, na mesma origem, o que
   mantém o CSP restrito (`img-src 'self' data: blob:`) sem liberar host externo.
 - **Não há capa por URL externa:** o site não carrega imagem de terceiros
@@ -184,14 +185,20 @@ site usa fallbacks **declarados** (Archivo Black e Bodoni Moda, via
 Fonts. A origem dos logotipos está em
 [`public/brand/SOURCES.md`](./public/brand/SOURCES.md).
 
-## Deploy (Vercel + Neon + Upstash)
+## Deploy (Vercel + Supabase + Upstash)
 
-1. Crie o banco no Neon e copie a connection string para `DATABASE_URL`.
+1. Crie o projeto no Supabase e use a URL do **pooler de transação** (porta
+   6543) em `DATABASE_URL`, e a do **pooler de sessão** (porta 5432) em
+   `DIRECT_DATABASE_URL` — as duas terminam em `?sslmode=require`.
 2. Crie o Redis no Upstash e use a URL TCP (`rediss://...`) em `REDIS_URL`.
 3. Na Vercel, defina as variáveis da tabela acima, incluindo
    **`TRUSTED_PROXY_HOPS=1`** (a Vercel anexa o IP do cliente ao
    `X-Forwarded-For`) e `NEXT_PUBLIC_SITE_URL`.
-4. Rode `bun run db:migrate` apontando para o Neon e, se quiser, `db:seed`.
+4. Rode `bun run db:migrate` apontando para o banco e, se quiser, `db:seed`.
+5. Em projeto Supabase, feche o schema para a API REST (o `public` é exposto
+   com a chave `anon`): `enable row level security` nas tabelas do app e
+   `revoke all ... from anon, authenticated`. O app conecta como dono, então
+   nada muda para ele.
 
 ## Monitoramento de segurança (Telegram)
 

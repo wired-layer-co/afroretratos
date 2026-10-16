@@ -1,13 +1,12 @@
 #!/bin/sh
-# Mantem o compute do Neon acordado na janela de maior trafego, para o primeiro
-# visitante nao pagar o cold start do scale-to-zero (algumas centenas de ms).
+# Mantem o Postgres acordado na janela de maior trafego, para o primeiro
+# visitante nao pagar o cold start de um banco que dorme por inatividade.
 #
-# Neon Free: 100 CU-hours por projeto por mes e o compute tem 0.25 CU.
-#   sempre ligado  -> 0.25 * 24h * 30d = 180 CU-h (estoura a cota)
-#   janela de 12h  -> 0.25 * 12h * 30d =  90 CU-h (sobra folga pro trafego real)
+# Supabase Free: o projeto pausa depois de 7 dias sem atividade. Uma consulta a
+# cada 4 minutos dentro da janela (11h-22h de Sao Paulo) mantem o banco ativo e
+# cobre o horario real de uso, sem precisar de batida fora de hora.
 #
-# A janela fica aqui (e nao no agendador) para o timer poder rodar a cada
-# 4 minutos o dia inteiro sem gastar cota fora de hora.
+# A janela fica aqui (e nao no agendador) para o timer poder rodar o dia inteiro.
 set -eu
 
 # A VPS roda em UTC; a janela aqui e no horario de Sao Paulo.

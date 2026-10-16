@@ -1,7 +1,7 @@
 name: afroretratos
 
 # VPS Oracle rootless (Cloudflare proxied + nginx na frente).
-# Postgres fica no Neon e Redis no Upstash, entao aqui roda so a aplicacao e o
+# Postgres fica no Supabase e Redis no Upstash, entao aqui roda so a aplicacao e o
 # vigia. Nao ha watchtower/autoheal: o Docker desta VPS e rootless, containers
 # nao acessam /var/run/docker.sock. A atualizacao roda no host (update.sh via
 # cron), que e o mesmo padrao dos outros projetos da VPS.

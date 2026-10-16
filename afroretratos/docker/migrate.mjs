@@ -2,8 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";
 
-// Migrations rodam melhor na conexao direta (sem pgbouncer). Neon, por
-// exemplo, expoe uma URL "direct" separada da URL "pooler".
+// Migrations rodam melhor na conexao direta (sem pgbouncer). Supabase, por
+// exemplo, expoe o pooler de sessao (5432) separado do de transacao (6543).
 const url = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
 if (!url) {
   console.error("[migrate] DATABASE_URL ausente.");

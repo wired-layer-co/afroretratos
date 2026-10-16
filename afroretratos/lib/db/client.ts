@@ -18,7 +18,7 @@ function create(): Cache {
   const client = postgres(url, {
     max: 5,
     prepare: false,
-    // Neon e outros provedores gerenciados aceitam sslmode na URL.
+    // Provedores gerenciados (Supabase, Neon) exigem sslmode na URL.
   });
   return { db: drizzle(client, { schema }) };
 }

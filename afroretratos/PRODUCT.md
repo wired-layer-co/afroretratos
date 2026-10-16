@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Confirmada pelo usuário: Next.js 16 (App Router) + TypeScript + Tailwind CSS, PostgreSQL + Drizzle ORM, Zod, Redis para rate limiting. Frontend e backend no mesmo projeto Next.js, sem microserviços. Deploy alvo: Vercel (app), Neon (Postgres), Upstash (Redis); desenvolvimento local com Docker. Sem autenticação de usuário público.
+Confirmada pelo usuário: Next.js 16 (App Router) + TypeScript + Tailwind CSS, PostgreSQL + Drizzle ORM, Zod, Redis para rate limiting. Frontend e backend no mesmo projeto Next.js, sem microserviços. Deploy alvo: Vercel (app), Supabase (Postgres), Upstash (Redis); desenvolvimento local com Docker. Sem autenticação de usuário público.
 
 ## Users
 

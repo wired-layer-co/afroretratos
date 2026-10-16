@@ -51,7 +51,7 @@ export const events = pgTable(
 
 /**
  * Fotos do evento enviadas pelo painel. O container de producao e read-only e
- * troca de imagem a cada deploy, entao o arquivo vive no banco (Neon) e e
+ * troca de imagem a cada deploy, entao o arquivo vive no banco (Supabase) e e
  * servido por /api/event-images/[id] — nada em disco.
  *
  * kind: "cover" e a capa unica (substituida a cada envio);
