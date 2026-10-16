@@ -49,6 +49,8 @@ export function EventGallery({
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // pointerType "mouse" com botao direito/middle: ignora.
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     dragRef.current = { x: event.clientX, y: event.clientY };
   }
 
@@ -58,7 +60,8 @@ export function EventGallery({
     if (!start) return;
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
-    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+    // Gesto curto ou mais vertical que horizontal: nao troca de foto.
+    if (Math.abs(dx) < 20 || Math.abs(dx) < Math.abs(dy)) return;
     go(dx < 0 ? index + 1 : index - 1);
   }
 
@@ -120,7 +123,7 @@ export function EventGallery({
         </div>
 
         <div
-          className="lg:col-span-8"
+          className="touch-pan-y select-none lg:col-span-8"
           role="group"
           aria-roledescription="carrossel"
           aria-label={`Fotos do evento ${title}`}

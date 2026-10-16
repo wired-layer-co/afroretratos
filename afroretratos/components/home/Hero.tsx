@@ -29,7 +29,7 @@ export function Hero() {
 
         <div className="mt-12 grid gap-10 lg:mt-8 lg:grid-cols-12 lg:gap-0">
           <div
-            className="rounded-lg bg-beige p-7 text-brown-deep sm:p-10 lg:col-span-6 lg:col-start-7 lg:row-start-1 lg:-mr-8 lg:p-12"
+            className="rounded-lg bg-beige p-7 text-brown-deep sm:p-10 lg:col-span-6 lg:col-start-7 lg:row-start-1 lg:mr-4 lg:p-12"
             data-hero-enter="2"
           >
             <p className="font-display text-[clamp(1.9rem,3.2vw,2.75rem)] leading-[1.32] tracking-[-0.01em]">
